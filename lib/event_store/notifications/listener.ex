@@ -41,7 +41,8 @@ defmodule EventStore.Notifications.Listener do
     {:noreply, [], state}
   end
 
-  def handle_cast(:disconnect, %Listener{} = state) do
+  def handle_cast(:disconnect, %Listener{ref: ref} = state) do
+    PostgrexNotifications.unlisten(EventStore.Notifications.Listener.Postgrex, ref)
     {:noreply, [], %Listener{state | ref: nil}}
   end
 
