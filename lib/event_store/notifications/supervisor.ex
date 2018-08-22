@@ -14,6 +14,7 @@ defmodule EventStore.Notifications.Supervisor do
   alias EventStore.{Config, MonitoredServer}
 
   alias EventStore.Notifications.{
+    Heartbeat,
     Listener,
     PostgrexNotifications,
     Reader,
@@ -67,7 +68,8 @@ defmodule EventStore.Notifications.Supervisor do
         ),
         {Listener, []},
         {Reader, Config.serializer()},
-        {StreamBroadcaster, []}
+        {StreamBroadcaster, []},
+        {Heartbeat, []}
       ],
       strategy: :one_for_all
     )
