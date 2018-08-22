@@ -58,6 +58,16 @@ defmodule EventStore.Subscriptions.Subscription do
   end
 
   @doc """
+  Catch up the subscription with recent events.
+
+  Used to catch any missing events that may have happened while a database
+  connection was down.
+  """
+  def catch_up(subscription) do
+    GenServer.cast(subscription, :catch_up)
+  end
+
+  @doc """
   Attempt to reconnect the subscription.
 
   Typically used to resume a subscription after a database connection failure.
