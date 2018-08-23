@@ -12,8 +12,9 @@ defmodule EventStore.Notifications.PostgrexNotifications do
   alias Postgrex.Protocol
 
   @timeout 5000
+  @idle_timeout 5000
 
-  defstruct idle_timeout: 5000,
+  defstruct idle_timeout: @idle_timeout,
             protocol: nil,
             parameters: nil,
             listeners: Map.new(),
@@ -106,7 +107,7 @@ defmodule EventStore.Notifications.PostgrexNotifications do
   def connect(_, opts) do
     case Protocol.connect([types: nil] ++ opts) do
       {:ok, protocol} ->
-        idle_timeout = Keyword.get(opts, :idle_timeout, 5000)
+        idle_timeout = Keyword.get(opts, :idle_timeout, @idle_timeout)
         {:ok, %__MODULE__{idle_timeout: idle_timeout, protocol: protocol}, idle_timeout}
 
       {:error, reason} ->
