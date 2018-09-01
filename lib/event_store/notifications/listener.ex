@@ -12,7 +12,7 @@ defmodule EventStore.Notifications.Listener do
   require Logger
 
   alias EventStore.MonitoredServer
-  alias EventStore.Notifications.Listener
+  alias EventStore.Notifications.{Listener, PostgrexNotifications}
 
   defstruct demand: 0,
             queue: :queue.new(),
@@ -76,7 +76,7 @@ defmodule EventStore.Notifications.Listener do
 
   defp listen_for_events(%Listener{} = state) do
     {:ok, ref} =
-      Postgrex.Notifications.listen(EventStore.Notifications.Listener.Postgrex, "events")
+      PostgrexNotifications.listen(EventStore.Notifications.Listener.Postgrex, "events")
 
     %Listener{state | ref: ref}
   end
