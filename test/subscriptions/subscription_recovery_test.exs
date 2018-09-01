@@ -7,29 +7,26 @@ defmodule EventStore.Subscriptions.SubscriptionRecoveryTest do
   alias EventStore.Subscriptions.Subscription
 
   describe "subscription recovery" do
-    test "should receive events after socket is closed" do
+    test "should receive events while socket is closed" do
       subscription_name = UUID.uuid4()
-
-      stream1_uuid = UUID.uuid4()
-
-      append_to_stream(stream1_uuid, 10)
+      stream_uuid = UUID.uuid4()
 
       {:ok, subscription} = subscribe_to_all_streams(subscription_name, self(), buffer_size: 10)
 
-      receive_and_ack(subscription, stream1_uuid, 1)
-
       kill_socket()
 
-      append_to_stream(stream1_uuid, 10, 10)
+      append_to_stream(stream_uuid, 10)
+      append_to_stream(stream_uuid, 10, 10)
 
-      refute_receive {:events, _events}
+      # Pooling should catch up events even before socket is restored
+      receive_and_ack(subscription, stream_uuid, 1)
+      receive_and_ack(subscription, stream_uuid, 11)
 
-      wait_socket()
+      wait_socket_recovery()
 
-      append_to_stream(stream1_uuid, 10, 20)
-
-      receive_and_ack(subscription, stream1_uuid, 11)
-      receive_and_ack(subscription, stream1_uuid, 21)
+      # Should receive events normally after socket is restored
+      append_to_stream(stream_uuid, 10, 20)
+      receive_and_ack(subscription, stream_uuid, 21)
 
       refute_receive {:events, _events}
     end
@@ -42,7 +39,7 @@ defmodule EventStore.Subscriptions.SubscriptionRecoveryTest do
     assert_receive {:DOWN, _monitor_ref, _type, _object, _info}
   end
 
-  defp wait_socket() do
+  defp wait_socket_recovery do
     # This is because MonitoredServer has some problem if we
     # do :sys.get_state very often. So we set a high step
     # so we leave time for MonitoredServer to start again
