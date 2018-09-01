@@ -19,4 +19,5 @@ config :eventstore, EventStore.Storage,
 config :eventstore,
   registry: :distributed,
   restart_stream_timeout: 1_000,
-  subscription_retry_interval: 1_000
+  subscription_retry_interval: 1_000,
+  event_pooling_interval: 1_000
