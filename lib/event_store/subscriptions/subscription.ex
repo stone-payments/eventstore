@@ -80,6 +80,11 @@ defmodule EventStore.Subscriptions.Subscription do
 
   @doc false
   def init(%Subscription{} = state) do
+    # Schedule an event pooling mechanism that will catch up a subscription to recent events.
+    # In this way a subscription does not rely entirely on the PostgreSQL listener
+    # capability of notifying events.
+    schedule_event_pooling()
+
     {:ok, state}
   end
 
@@ -118,6 +123,19 @@ defmodule EventStore.Subscriptions.Subscription do
       subscription
       |> SubscriptionFsm.disconnect(lock_ref)
       |> apply_subscription_to_state(state)
+
+    {:noreply, state}
+  end
+
+  def handle_info(
+        :event_pooling,
+        %Subscription{subscription: %SubscriptionFsm{state: fsm_state}} = state
+      ) do
+    if fsm_state == :subscribed do
+      GenServer.cast(self(), :catch_up)
+    end
+
+    schedule_event_pooling()
 
     {:noreply, state}
   end
@@ -257,18 +275,31 @@ defmodule EventStore.Subscriptions.Subscription do
   # No-op for all other subscription states.
   defp handle_subscription_state(%Subscription{} = state), do: state
 
+  defp schedule_event_pooling do
+    Process.send_after(self(), :event_pooling, event_pooling_interval())
+  end
+
   # Get the delay between subscription attempts, in milliseconds, from app
   # config. The default value is one minute and minimum allowed value is one
   # second.
   defp subscription_retry_interval do
-    case Application.get_env(:eventstore, :subscription_retry_interval) do
+    get_interval(:subscription_retry_interval, 60_000, 1_000)
+  end
+
+  # Get the delay between event pooling requests, in milliseconds, from app
+  # config. The default value is 5 seconds and minimum allowed value is one
+  # second.
+  defp event_pooling_interval do
+    get_interval(:event_pooling_interval, 5_000, 1_000)
+  end
+
+  defp get_interval(interval_config_name, default, min) do
+    case Application.get_env(:eventstore, interval_config_name) do
       interval when is_integer(interval) and interval > 0 ->
-        # ensure interval is no less than one second
-        max(interval, 1_000)
+        max(interval, min)
 
       _ ->
-        # default to 60s
-        60_000
+        default
     end
   end
 
